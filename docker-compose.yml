@@ -1,0 +1,133 @@
+# Check the supabase CLI for specific versions
+#
+# https://github.com/supabase/cli/blob/main/internal/utils/utils.go#L41
+
+version: '3.6'
+services:
+  kong:
+    container_name: kong-api-gateaway
+    build:
+      context: ./.supabase/kong
+    environment:
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth
+    ports:
+      - 8000:8000/tcp
+  auth:
+    container_name: auth-service
+    image: supabase/gotrue:v2.2.12
+    depends_on:
+      - db
+      - mail
+    environment:
+      GOTRUE_SITE_URL: http://localhost:3000
+
+      GOTRUE_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@db:5432/postgres?sslmode=disable&search_path=auth
+
+      API_EXTERNAL_URL: http://localhost:8000
+
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DISABLE_SIGNUP: 'false'
+
+      GOTRUE_SMTP_HOST: mail
+      GOTRUE_SMTP_PORT: 2500
+      GOTRUE_SMTP_USER: GOTRUE_SMTP_USER
+      GOTRUE_SMTP_PASS: GOTRUE_SMTP_PASS
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@email.com
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Confirm Your Signup
+      GOTRUE_MAILER_SUBJECTS_INVITE: You have been invited
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your Magic Link
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: Reset Your Password
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_EXTERNAL_PHONE_ENABLED: 'true'
+
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /confirm-email
+      GOTRUE_MAILER_URLPATHS_INVITE: /join-beta-testing
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /forgot-password
+
+      GOTRUE_MAILER_AUTOCONFIRM: 'true'
+      GOTRUE_SMS_AUTOCONFIRM: 'true'
+      GOTRUE_LOG_LEVEL: DEBUG
+      GOTRUE_OPERATOR_TOKEN: super-secret-operator-token
+  rest:
+    container_name: postgrest-service
+    image: postgrest/postgrest:v9.0.0 
+    depends_on:
+      - db
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@db:5432/postgres
+      PGRST_DB_SCHEMA: public, storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+  realtime:
+    container_name: realtime-service
+    image: supabase/realtime:v0.19.4
+    depends_on:
+      - db
+    restart: on-failure
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_USER: postgres
+      DB_PORT: 5432
+      DB_PASSWORD: postgres
+      HOSTNAME: localhost
+      DB_NAME: postgres
+      DB_SSL: 'false'
+      SLOT_NAME: supabase_realtime
+      TEMPORARY_SLOT: 'true'
+      JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      SECURE_CHANNELS: 'false'
+      REPLICATION_MODE: 'RLS'
+      REPLICATION_POLL_INTERVAL: 100
+  storage:
+    container_name: storage-service
+    image: supabase/storage-api:v0.10.0
+    depends_on:
+      - db
+      - rest
+    restart: on-failure
+    environment:
+      ANON_KEY: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTYwMzk2ODgzNCwiZXhwIjoyNTUwNjUzNjM0LCJyb2xlIjoiYW5vbiJ9.36fUebxgx1mcBo4s19v0SzqmzunP--hm_hep0uLX0ew
+      SERVICE_KEY: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTYwMzk2ODgzNCwiZXhwIjoyNTUwNjUzNjM0LCJyb2xlIjoic2VydmljZV9yb2xlIn0.necIJaiP7X2T2QjGeV-FhpkizcNTX8HjDDBAxpgQTEI
+
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+      PGOPTIONS: "-c search_path=storage"
+
+      STORAGE_BACKEND: file
+      FILE_SIZE_LIMIT: 52428800
+      FILE_STORAGE_BACKEND_PATH: /var/data/storage
+
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      # REGION: us-east-1 # region where your bucket is located
+      # GLOBAL_S3_BUCKET: supa-storage-testing # name of s3 bucket where you want to store objects
+      # AWS_ACCESS_KEY_ID: replace-with-your-aws-key
+      # AWS_SECRET_ACCESS_KEY: replace-with-your-aws-secret
+  db:
+    container_name: postgres
+    build:
+      context: ./.supabase/postgres
+    ports:
+      - "5432:5432"
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf 
+    environment:
+      POSTGRES_PASSWORD: postgres
+  mail:
+    container_name: mail-service
+    image: inbucket/inbucket:stable
+    ports:
+      - 9000:9000
