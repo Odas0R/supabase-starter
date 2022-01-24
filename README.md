@@ -1,4 +1,4 @@
-# Supabase Docker Compose Environment
+# supabase-starter
 
 I felt like creating my own tooling for managing supabase projects, will add
 more stuff here while using this template.
