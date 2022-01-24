@@ -26,13 +26,4 @@ seeder:
 
 reset: undirty migrate-down migrate-up seeder
 
-test-sql:
-	@pg_prove --host localhost --dbname postgres --username postgres --port 5432 -v db/tests/*.sql
-
-watch-sql:
-	@fswatch -o db/tests | xargs -n1 -I{} pg_prove --host localhost --dbname postgres --username postgres --port 5432 -v db/tests/*.sql
-
-psql:
-	@psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
-
-.PHONY: migrate-up migrate-up1 migrate-down migrate-down1 migrate-create psql reset undirty test-sql seeder
+.PHONY: migrate-up migrate-up1 migrate-down migrate-down1 migrate-create reset undirty seeder

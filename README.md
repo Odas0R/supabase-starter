@@ -1,9 +1,13 @@
 # Supabase Docker Compose Environment
 
-Supabase is a very good tool, with pretty decent services around it that
-eases my development when creating projects, but there's one thing that it
-sucks: CI/CD.
+I felt like creating my own tooling for managing supabase projects, will add
+more stuff here while using this template.
 
-At the moment there's no good tooling around to manage your supabase
-locally, therefor the need for creating a template environment to add to
-your project.
+**Unfinished**:
+
+- [ ] Add a `test:sql` command that runs `pgtap` on the postgres container
+  (it's already installed).
+- [ ] Add default tables & necessary procedures that are common between
+  projects
+- [ ] Add a example of an app
+- [ ] Add a tool to push changes local schema to a remote database
